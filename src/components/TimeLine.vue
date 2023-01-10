@@ -1,8 +1,42 @@
 <!-- vue3での記法 -->
 <script setup>
 import Card from './Card.vue'
-import SideVar from './SideVar.vue';
-import { ref, reactive } from "vue";
+import { ref, reactive, onMounted } from "vue";
+import { collection, getDocs } from 'firebase/firestore';
+import { getDownloadURL, getStorage, ref as storageRef } from "firebase/storage";
+import { db } from '../main.js'
+
+const data = ref()
+const fire = ref()
+const error = ref()
+
+const img = ref()
+
+const getCardItems = async () => {
+    console.log("getCardItems")
+    try {
+        const usersCollection = collection(db, 'card-items');
+        const usersSnapshot = await getDocs(usersCollection);
+        data.value = usersSnapshot.docs.map(doc => doc.data());
+        for (var i = 0; i < data.value.length; i++) {
+            console.log(data.value[i])
+            const storage = getStorage();
+            fire.value = storageRef(storage, data.value[i].imgPath);
+            // console.log(fire.value)
+            getDownloadURL(fire.value).then(url => {
+                console.log(url)
+            })
+        }
+
+    } catch (e) {
+        error.value = e
+        console.log(error.value)
+    }
+}
+
+onMounted(() => {
+    getCardItems()
+})
 
 // reactiveを記載することで変更をリアクティブに検知する
 const items = reactive([
@@ -64,9 +98,12 @@ const props = defineProps({
 })
 
 const changeShow = (target) => {
-    const target_item = items[target.index]
+    const target_item = data.value[target.index]
     target_item.show = target.show
 }
+
+
+
 
 </script>
 
@@ -74,13 +111,19 @@ const changeShow = (target) => {
     <v-container>
         <v-row>
             <v-col cols="12" xs="4">
-                <v-timeline align="start">
-                    <v-timeline-item v-for="(item, i) in items" :key="i" :dot-color="item.color" :icon="item.icon"
+                <v-timeline  align="start">
+                    <v-timeline-item v-for="(item, i) in data" :key="i" :dot-color="item.color" :icon="item.icon"
                         fill-dot>
                         <!-- propsとして１つのオブジェクトをコンポーネントに渡す -->
                         <Card :item=item :index=i @changeShow="changeShow" />
                     </v-timeline-item>
                 </v-timeline>
+                <!-- <v-timeline side="end" align="start">
+                    <v-timeline-item v-for="(item, i) in data" :key="i" :dot-color="item.color" :icon="item.icon"
+                        fill-dot>
+                        <Card :item=item :index=i @changeShow="changeShow" />
+                    </v-timeline-item>
+                </v-timeline> -->
             </v-col>
         </v-row>
     </v-container>
